@@ -1,0 +1,21 @@
+package main
+
+import (
+	"fmt"
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/varsilias/zero-downtime/handlers"
+)
+
+func main() {
+	r := chi.NewRouter()
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+
+	r.Get("/", handlers.HandleRoot)
+
+	fmt.Println("Server Listening on Port: 8080")
+	http.ListenAndServe(":8080", r)
+}

@@ -1,0 +1,31 @@
+# Executable files
+#
+# Typically, you'll want to ignore the compiled binary files
+# that your project produces.
+*.exe
+*.dll
+*.so
+*.dylib
+*.o
+*.bin
+
+# Compiled executable, libraries and plugins
+#
+# Go's standard build output directory.
+# This should always be ignored.
+/bin/
+/dist/
+/out/
+/tmp/
+
+
+
+# IDE and Editor-specific directories
+#
+# Ignore files and directories created by common IDEs like VS Code,
+# GoLand, etc.
+.idea/
+.vscode/
+.DS_Store
+*.sublime-project
+*.sublime-workspace
