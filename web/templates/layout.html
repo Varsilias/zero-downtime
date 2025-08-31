@@ -1,0 +1,59 @@
+{{define "layout"}}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Zero Downtime Demo</title>
+    <link href="/static/dist/app.css" rel="stylesheet"/>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script></head>
+    <script>
+        // Auto-scroll messages to bottom after new content is appended
+        document.addEventListener('htmx:afterSwap', function (evt) {
+            if (evt.detail && evt.detail.target && evt.detail.target.id === 'messages') {
+                const el = evt.detail.target; el.scrollTop = el.scrollHeight;
+            }
+        });
+    </script>
+<body>
+    <div id="content" class="w-full flex">
+        <!--SideBar-->
+        <div id="sidebar" class="h-screen hidden md:block bg-white md:w-[25%] grow-0 border-r border-gray-300 shrink-0 overflow-y-auto sticky top-0 max-w-[300px]">
+            <div class="p-4 flex items-center justify-between">
+                <div class="font-semibold">Chats</div>
+                <form hx-post="/ui/session/new" hx-swap="none">
+                    <button class="rounded-xl px-3 py-1.5 bg-slate-900 text-white text-sm">New</button>
+                </form>
+            </div>
+            <nav class="px-2 pb-4 space-y-1 overflow-y-auto max-h-[calc(100dvh-4rem)]">
+                {{range .Sessions}}
+                <a href="/?s={{.ID}}" class="block rounded-xl px-3 py-2 hover:bg-slate-100 {{if eq $.SessionID .ID}}bg-slate-100 font-medium border border-slate-200{{end}}">
+                    <div class="text-sm truncate">{{if .Title}}{{.Title}}{{else}}Chat {{.ID}}{{end}}</div>
+                    <div class="text-xs text-slate-500">{{.Updated.Format "Jan 2 15:04"}}</div>
+                </a>
+                {{else}}
+                <div class="text-sm text-slate-500 px-3">No chats yet</div>
+                {{end}}
+            </nav>
+        </div>
+
+        <div id="body" class="h-full w-full md:w-[75%] md:max-w-[calc(100% - 300px)] grow shrink main_content relative">
+            <header class="sticky top-0 z-10 bg-white/80 backdrop-blur border-b border-gray-300 shadow-sm">
+                <div class="w-full mx-auto px-4 md:px-12 py-4 flex items-center justify-between">
+                    <h1 class="text-lg font-semibold">
+                        <a href="/">
+                            ZeroDT Demo
+                        </a>
+                        {{template "version-pill.html" .}}
+                    </h1>
+                    <div class="text-xs text-slate-500">Session: {{.SessionID}}</div>
+                </div>
+            </header>
+            <div class="w-full mx-auto px-4 md:px-12 py-8">
+                {{template "body" .}}
+
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+{{end}}

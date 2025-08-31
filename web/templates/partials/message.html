@@ -1,0 +1,13 @@
+{{define "message.html"}}
+<div class="flex {{if eq .Role "assistant"}}justify-start{{else}}justify-end{{end}}">
+<div class="max-w-[85%] rounded-2xl px-4 py-3 prose prose-slate prose-pre:bg-[#0d1117] prose-pre:text-[#c9d1d9] prose-pre:p-3 prose-pre:rounded-xl prose-code:before:content-[''] prose-code:after:content-['']
+{{if eq .Role "assistant"}}bg-slate-50 border border-slate-200{{else}}bg-slate-900 text-white{{end}}">
+<div class="text-[11px] mb-1 uppercase tracking-wide text-slate-500">
+    {{.Role}}
+    {{if .Latency}} • {{.Latency}} ms {{end}}
+    {{if .At}} • {{.At}} {{end}}
+</div>
+<div class="markdown">{{.HTML}}</div>
+</div>
+</div>
+{{end}}

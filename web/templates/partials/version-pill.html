@@ -1,0 +1,10 @@
+{{define "version-pill.html"}}
+<span id="version-pill"
+      hx-get="/ui/version-pill"
+      hx-trigger="every 120s"
+      hx-swap="outerHTML"
+      class="rounded-full px-2 py-1 text-xs bg-slate-200"
+      title="commit {{.Commit}} • built {{.BuiltAt}}">
+  v{{.Version}}
+</span>
+{{end}}

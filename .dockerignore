@@ -1,0 +1,7 @@
+.git
+tmp
+bin
+node_modules
+web/static/dist
+.DS_Store
+.air.toml
