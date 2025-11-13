@@ -1,7 +1,7 @@
 {{define "body"}}
-<div class="h-full flex flex-col">
+<div class="flex flex-col">
     <!-- Messages area (independent scroll inside main) -->
-    <section id="messages" class="flex-1 overflow-y-auto space-y-3 pr-1">
+    <section id="messages" class="flex-1 overflow-y-auto space-y-3 pr-1 pb-[8rem] md:pb-[10rem]">
         {{range .History}}
         {{template "message.html" .}}
         {{end}}
@@ -9,7 +9,7 @@
 
 
     <!-- Composer fixed to bottom of main -->
-    <div class="shrink-0 flex fixed bottom-0 md:bottom-4 rounded-xl left-0 md:left-[30%] md:right-20 right-0 bg-white border border-gray-300">
+    <div class="shrink-0 flex sticky bottom-0 md:bottom-4 rounded-xl left-0 md:left-[30%] md:right-20 right-0 bg-white border border-gray-300">
         <div class="flex flex-col w-full">
             <form hx-post="/ui/session/new" hx-swap="none" class="md:hidden items-center w-full p-4 flex flex-col gap-3">
                 <button class="rounded-xl px-3 py-1.5 bg-slate-900 text-white text-sm">
@@ -21,7 +21,8 @@
                   hx-post="/ui/chat"
                   hx-target="#messages"
                   hx-swap="beforeend"
-                  hx-indicator="#sending">
+                  hx-indicator="#sending"
+                 hx-on:htmx:after-request="this.reset()">
                 <input type="hidden" name="session_id" value="{{.SessionID}}"/>
                 <div class="w-full flex items-center justify-center gap-2">
                     <label class="text-md text-slate-600">Model</label>
@@ -31,7 +32,13 @@
                     <span id="sending" class="htmx-indicator text-sm text-slate-500">…sending</span>
                 </div>
                 <div class="flex w-full justify-center gap-2 items-start">
-                    <textarea name="message" rows="1" placeholder="Ask something..." class="flex-1 border rounded-xl px-3 py-2" required></textarea>
+                    <textarea 
+                        id="chat-input"
+                        name="message" 
+                        rows="1" 
+                        placeholder="Ask something..." 
+                        class="flex-1 border rounded-xl px-3 py-2 resize-none overflow-y-auto" 
+                        required></textarea>
                     <button class="rounded-xl px-4 py-2 bg-slate-900 text-white">Send</button>
                 </div>
             </form>

@@ -30,3 +30,5 @@
 *.sublime-project
 *.sublime-workspace
 node_modules
+DEMO_PROMPT.md
+LLM_PROMPT.md

@@ -7,7 +7,7 @@ metadata:
    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
 spec:
   rules:
-    - host: zero.test
+    - host: zerodt.danielokoronkwo.com
       http:
         paths:
           - path: /

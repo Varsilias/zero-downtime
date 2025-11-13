@@ -13,6 +13,23 @@
                 const el = evt.detail.target; el.scrollTop = el.scrollHeight;
             }
         });
+        // Auto-resize textarea as user types
+        document.addEventListener('input', function (e) {
+            const target = e.target;
+            if (target.id !== 'chat-input' || target.tagName.toLowerCase() !== 'textarea') return;
+            target.style.height = 'auto';
+            target.style.height = Math.min(target.scrollHeight, 200) + 'px';
+        });
+        // Reset textarea height when form is reset
+        document.addEventListener('htmx:afterRequest', function (e) {
+            const form = e.target;
+            if (form.id === 'chat-form') {
+                const textarea = form.querySelector('#chat-input');
+                if (textarea) {
+                    textarea.style.height = 'auto';
+                }
+            }
+        });
     </script>
 <body>
     <div id="content" class="w-full flex">

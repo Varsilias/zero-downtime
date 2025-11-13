@@ -7,7 +7,7 @@ VERSION="${VERSION:-$(git describe --tags --always --dirty=-dirty 2>/dev/null ||
 COMMIT="${COMMIT:-$(git rev-parse --short HEAD 2>/dev/null || echo none)}"
 BUILT_AT="${BUILT_AT:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
 
-# <-- MUST match your go.mod module path
+# <-- MUST match go.mod module path
 PKG="github.com/varsilias/zero-downtime/internal/buildinfo"
 
 # <-- MUST match .air.toml [build].bin and full_bin
