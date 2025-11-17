@@ -1,0 +1,111 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+  labels:
+    app: ollama
+spec:
+  ports:
+    - port: 11434
+      targetPort: ollama
+      protocol: TCP
+      name: ollama
+  selector:
+    app: ollama
+  clusterIP: None  # Headless service for StatefulSet
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ollama
+  labels:
+    app: ollama
+spec:
+  serviceName: ollama
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      containers:
+      - name: ollama
+        image: ollama/ollama:latest
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: OLLAMA_HOST
+            value: "0.0.0.0"
+          - name: OLLAMA_NUM_GPU
+            value: "0"
+          - name: OLLAMA_PULL_MODELS
+            value: "gemma3:270m smollm:135m deepseek-r1:1.5b llama3.2:3b"
+        ports:
+          - name: ollama
+            containerPort: 11434
+        volumeMounts:
+          - name: ollama-models
+            mountPath: /root/.ollama/models
+        readinessProbe:
+          httpGet:
+            path: /api/version
+            port: 11434
+          initialDelaySeconds: 5
+          timeoutSeconds: 2
+          periodSeconds: 5
+          failureThreshold: 12
+        livenessProbe:
+          httpGet:
+            path: /api/version
+            port: 11434
+          initialDelaySeconds: 20
+          periodSeconds: 20
+          timeoutSeconds: 3
+          failureThreshold: 6
+        resources:
+          requests:
+            cpu: "2"
+            memory: 1Gi
+          limits:
+            cpu: "4"
+            memory: 2Gi
+        lifecycle:
+          postStart:
+            exec:
+              command:
+                - /bin/sh
+                - -lc
+                - |
+                  # wait for API to accept requests
+                  for i in $(seq 1 60); do
+                    if wget -qO- http://127.0.0.1:11434/api/version >/dev/null 2>&1; then
+                      break
+                    fi
+                    sleep 1
+                  done
+                  # Pull models (download to disk)
+                  for m in ${OLLAMA_PULL_MODELS}; do
+                    echo "Pulling $m..."
+                    ollama pull "$m" || true
+                  done
+                  # Pre-load models into memory
+                  for m in ${OLLAMA_PULL_MODELS}; do
+                    echo "Pre-loading $m into memory..."
+                    wget -qO- --post-data="{\"model\":\"$m\",\"prompt\":\"test\",\"stream\":false,\"options\":{\"num_predict\":1}}" \
+                      --header="Content-Type: application/json" \
+                      http://127.0.0.1:11434/api/generate >/dev/null 2>&1 || true
+                    echo "$m pre-loaded"
+                  done
+                  echo "All models pulled and pre-loaded into memory"
+  volumeClaimTemplates:
+  - metadata:
+      name: ollama-models
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 200Gi  # Adjust based on your model sizes
+      storageClassName: do-block-storage

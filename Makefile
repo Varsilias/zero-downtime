@@ -2,8 +2,12 @@
 APP            ?= zero-downtime
 NAMESPACE      ?= default
 
+# Docker credentials (set via environment variables)
+DOCKER_USERNAME ?= $(shell echo $$DOCKER_USERNAME)
+DOCKER_PASSWORD ?= $(shell echo $$DOCKER_PASSWORD)
+
 # Always use this repo name
-IMAGE_REPO     := varsilias/zero-downtime
+IMAGE_REPO     := docker.io/varsilias/zero-downtime
 
 # Build info (ldflags)
 VERSION        ?= $(shell git rev-parse --short HEAD)-$(shell date -u +%Y%m%d%H%M%S)
@@ -16,29 +20,42 @@ IMAGE          := $(IMAGE_REPO):$(VERSION)
 GCP_CONTEXT 	= zero-downtime-gcp-cluster
 K_DEPLOY        = k8s/deployment.yaml
 K_SERVICE       = k8s/service.yaml
-K_PVC			= k8s/pvc.yaml
+K_OLLAMA		= k8s/ollama.yaml
 K_INGRESS		= k8s/ingress.yaml
 
 # -------- Targets --------
-.PHONY: release docker-build docker-push set-gcp-context load-minikube apply set-image rollout url logs status history undo restart
+.PHONY: release docker-build docker-login docker-push set-gcp-context load-minikube apply set-image rollout url logs status history undo restart ingress
 
-release-gcp: docker-build docker-push set-gcp-context apply set-image rollout url ## Build, push, set-context, deploy, wait, print URL
+release-gcp: docker-build docker-push set-gcp-context apply set-image rollout ingress ## Build, push, deploy, wait, print ingress URL
+
+release-do: docker-build docker-push apply set-image rollout ingress ## Build, push, set-context, deploy, wait, print ingress URL
 
 release: docker-build load-minikube apply set-image rollout url ## Build, load, deploy, wait, print URL
 
 docker-build: ## Build container image with linker flags (Dockerfile handles Node/Tailwind)
 	@echo ">>> Building image: $(IMAGE)"
-	docker build \
+	@echo ">>> Target platform: linux/amd64 (for Kubernetes cluster)"
+	docker buildx build --platform linux/amd64 \
 		--build-arg VERSION="$(VERSION)" \
 		--build-arg COMMIT="$(COMMIT)" \
 		--build-arg BUILT_AT="$(BUILT_AT)" \
+		--load \
 		-t "$(IMAGE)" .
 
 load-minikube: ## Load image into Minikube's container runtime
 	@echo ">>> Loading image into Minikube: $(IMAGE)"
 	minikube image load "$(IMAGE)"
 
-docker-push: ## Load image into Minikube's container runtime
+docker-login: ## Login to DockerHub using DOCKER_USERNAME and DOCKER_PASSWORD env vars
+	@if [ -z "$(DOCKER_USERNAME)" ] || [ -z "$(DOCKER_PASSWORD)" ]; then \
+		echo ">>> Error: DOCKER_USERNAME and DOCKER_PASSWORD must be set"; \
+		echo ">>> Usage: DOCKER_USERNAME=user DOCKER_PASSWORD=pass make docker-login"; \
+		exit 1; \
+	fi
+	@echo ">>> Logging into DockerHub as $(DOCKER_USERNAME)"
+	@echo "$(DOCKER_PASSWORD)" | docker login -u "$(DOCKER_USERNAME)" --password-stdin
+
+docker-push: docker-login ## Push image to DockerHub (requires DOCKER_USERNAME and DOCKER_PASSWORD)
 	@echo ">>> Pushing image to DockerHub: $(IMAGE)"
 	docker push "$(IMAGE)"
 
@@ -52,7 +69,8 @@ ingress: ## Show a ingress URL to reach the service
 
 apply: ## Apply service and deployment manifests
 	@echo ">>> Applying manifests to namespace $(NAMESPACE)"
-	kubectl -n "$(NAMESPACE)" apply -f "$(K_PVC)"
+	kubectl -n "$(NAMESPACE)" apply -f "$(K_OLLAMA)"
+	kubectl wait --for=condition=ready pod/ollama-0 --timeout=600s
 	kubectl -n "$(NAMESPACE)" apply -f "$(K_SERVICE)"
 	kubectl -n "$(NAMESPACE)" apply -f "$(K_DEPLOY)"
 	kubectl -n "$(NAMESPACE)" apply -f "$(K_INGRESS)"

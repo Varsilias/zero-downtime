@@ -1,5 +1,7 @@
 # ── ASSETS ─────────────────────────────────────────────────────────────────────
-FROM node:20-alpine AS assets
+# Use BUILDPLATFORM for faster native builds (Node.js can run on any platform)
+ARG BUILDPLATFORM
+FROM --platform=$BUILDPLATFORM node:20-alpine AS assets
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci --no-audit --no-fund
@@ -10,7 +12,7 @@ COPY web/templates ./web/templates
 RUN npm run tw:prod
 
 # ── GO BUILD ───────────────────────────────────────────────────────────────────
-FROM golang:1.22-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.22-alpine AS builder
 WORKDIR /app
 
 # Install git for 'go mod' and allow private modules
@@ -29,6 +31,8 @@ COPY --from=assets /app/web/static/dist ./web/static/dist
 ARG VERSION=dev
 ARG COMMIT=none
 ARG BUILT_AT=unknown
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
 
 # IMPORTANT: module path (from go.mod) + package path for buildinfo
 # module github.com/varsilias/zero-downtime
@@ -36,8 +40,12 @@ ARG BUILT_AT=unknown
 ENV PKG_PATH=github.com/varsilias/zero-downtime/internal/buildinfo
 
 # Static build (distroless friendly), smaller binary
+# Explicitly set target OS and architecture for cross-platform builds
 ENV CGO_ENABLED=0
-RUN go build -trimpath -ldflags "\
+# Parse TARGETPLATFORM (e.g., "linux/amd64") into GOOS and GOARCH
+RUN TARGETOS=$(echo ${TARGETPLATFORM} | cut -d"/" -f1) && \
+    TARGETARCH=$(echo ${TARGETPLATFORM} | cut -d"/" -f2) && \
+    GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -ldflags "\
   -s -w \
   -X ${PKG_PATH}.Version=${VERSION} \
   -X ${PKG_PATH}.Commit=${COMMIT} \
@@ -45,7 +53,9 @@ RUN go build -trimpath -ldflags "\
   -o /out/app .
 
 # ── RUNTIME ────────────────────────────────────────────────────────────────────
-FROM gcr.io/distroless/static:nonroot
+# Use TARGETPLATFORM to ensure runtime image matches build architecture
+ARG TARGETPLATFORM
+FROM --platform=$TARGETPLATFORM gcr.io/distroless/static:nonroot
 WORKDIR /app
 COPY --from=builder /out/app /app/app
 # templates + assets must be present at runtime (UI reads from disk)

@@ -19,13 +19,9 @@ spec:
       labels:
         app: zero-downtime
     spec:
-      volumes:
-        - name: ollama-models
-          persistentVolumeClaim:
-            claimName: ollama-models
       containers:
-      - image: varsilias/zero-downtime:fee0cb7-20250830173320
-        imagePullPolicy: IfNotPresent
+      - image: docker.io/varsilias/zero-downtime
+        imagePullPolicy: Always  # Always pull to ensure we get the latest versioned image
         name: zero-downtime
         env:
           - name: ADDR
@@ -35,11 +31,11 @@ spec:
           - name: LOG_JSON
             value: "true"
           - name: OLLAMA_BASE_URL
-            value: "http://127.0.0.1:11434"
+            value: "http://ollama:11434"
           - name: OLLAMA_WAIT
             value: "true"
           - name: OLLAMA_WAIT_TIMEOUT
-            value: "300s"           # give sidecar time to pull on first deploy
+            value: "300s"           # give ollama time to pull on first deploy
           - name: OLLAMA_WAIT_INTERVAL
             value: "2s"
           - name: OLLAMA_WAIT_MODELS
@@ -65,10 +61,10 @@ spec:
           failureThreshold: 3
         resources:
           requests:
-            cpu: 50m
-            memory: 64Mi
+            cpu: 250m
+            memory: 128Mi
           limits:
-            cpu: 300m
+            cpu: 500m
             memory: 256Mi
         startupProbe:
           httpGet:
@@ -76,61 +72,4 @@ spec:
             port: http
           initialDelaySeconds: 1
           periodSeconds: 5
-          failureThreshold: 120   # 120 * 5s = 10 min max; adjust above your wait timeout
-
-      - name: ollama
-        image: ollama/ollama:latest # Before pinning to a version ensure the architecture it is built for is compatible with you cluster CPU Architecture
-        imagePullPolicy: IfNotPresent
-        env:
-          - name: OLLAMA_HOST                 # listen on all interfaces in pod
-            value: "0.0.0.0"
-          - name: OLLAMA_NUM_GPU              # demo on CPU; set if you have GPU
-            value: "0"
-          # list of models to auto-pull on start (space-separated)
-          - name: OLLAMA_PULL_MODELS
-            value: "gemma3:270m smollm:135m deepseek-r1:1.5b"
-        ports:
-          - name: ollama
-            containerPort: 11434
-        volumeMounts:
-          - name: ollama-models
-            mountPath: /root/.ollama
-        readinessProbe:
-          httpGet:
-            path: /api/version
-            port: 11434
-          initialDelaySeconds: 5
-          timeoutSeconds: 2
-          periodSeconds: 5
-          failureThreshold: 12
-        livenessProbe:
-          httpGet:
-            path: /api/version
-            port: 11434
-          initialDelaySeconds: 20
-          periodSeconds: 20
-          timeoutSeconds: 3
-          failureThreshold: 6
-        resources:
-          requests: { cpu: 200m, memory: 1Gi }
-          limits: { cpu: "1",   memory: 2Gi }
-        # Pull initial models after the daemon starts
-        lifecycle:
-          postStart:
-            exec:
-              command:
-                - /bin/sh
-                - -lc
-                - |
-                  # wait for API to accept requests
-                  for i in $(seq 1 60); do
-                    if wget -qO- http://127.0.0.1:11434/api/version >/dev/null 2>&1; then
-                      break
-                    fi
-                    sleep 1
-                  done
-                  for m in ${OLLAMA_PULL_MODELS}; do
-                    echo "Pulling $m..."
-                    # 'ollama pull' uses the local daemon
-                    ollama pull "$m" || true
-                  done
+          failureThreshold: 120   # 120 * 5s = 10 min max; adjust as needed

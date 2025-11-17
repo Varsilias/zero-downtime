@@ -3,9 +3,21 @@ kind: Ingress
 metadata:
   name: zero-downtime
   annotations:
-  # Uncomment for NGINX extra settings if needed
-   nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-body-size: "2m"
+    # Match main.go server timeouts:
+    # - proxy-read-timeout matches WriteTimeout (5 minutes = 300s)
+    # - proxy-send-timeout matches ReadTimeout (15s)
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"  # 5 minutes (matches WriteTimeout)
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "15"   # 15 seconds (matches ReadTimeout)
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
 spec:
+  ingressClassName: "nginx"
+  tls:
+    - hosts:
+        - zerodt.danielokoronkwo.com
+      secretName: zero-downtime-tls
   rules:
     - host: zerodt.danielokoronkwo.com
       http:
